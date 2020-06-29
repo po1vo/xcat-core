@@ -73,6 +73,7 @@ use Text::Balanced qw(extract_bracketed);
 require xCAT::NotifHandler;
 use Time::HiRes qw/time/;
 use JSON;
+require xCAT::Magiclab;
 
 
 #The process id of the database worker
@@ -1918,6 +1919,13 @@ sub setAttribs
         $sth->finish;
     }
 
+    xCAT::Magiclab::run($self);
+    if ($xCAT::Magiclab::err) {
+        $self->trace_db(END_TYPE, "LINE ".__LINE__.": " . $xCAT::Magiclab::errstr);
+        $self->rollback();
+        return (undef, $xCAT::Magiclab::errstr);
+    }
+
     $self->_refresh_cache();    #cache is invalid, refresh
                                 #notify the interested parties
     if ($notif == 1)
@@ -2276,7 +2284,15 @@ sub setNodesAttribs {
         }
         @currnodes = splice(@$nodelist, 0, $nodesatatime);
     }
-    $self->{dbh}->commit;                        #commit pending transactions
+
+    xCAT::Magiclab::run($self);
+    if ($xCAT::Magiclab::err) {
+        $self->trace_db(END_TYPE, "LINE ".__LINE__.": " . $xCAT::Magiclab::errstr);
+        $self->rollback();
+    } else {
+        $self->{dbh}->commit;                        #commit pending transactions
+    }
+
     $self->{dbh}->{AutoCommit} = $oldac;         #restore autocommit semantics
     $self->_refresh_cache();                     #cache is invalid, refresh
     $self->trace_db(END_TYPE);

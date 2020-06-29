@@ -1444,6 +1444,10 @@ sub setobjdefs
                 if (%updates) {
                     $commit_manually = 1;
                     my ($rc, $str) = $thistable->setAttribs(\%keyhash, \%updates);
+                    unless (defined $rc) {
+                        xCAT::MsgUtils->message("E", { data => [$str] }, $::callback);
+                        $ret = 1;
+                    }
                 }
             }    #end foreach my $obj
             if ($commit_manually) {
